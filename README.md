@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Feedback Board
 
-## Getting Started
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fpostcabinets-jp%2Ffeedback-board&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY&project-name=feedback-board)
 
-First, run the development server:
+**Cannyの代替オープンソース。** 機能要望の収集・投票・優先順位付け・ロードマップ管理をセルフホストで。
+
+> Cannyは$79/mo〜。Feedback Boardは無制限・無料・完全コントロール。
+
+## Features
+
+- **投票システム** — 1ユーザー1票。投票取り消し可。投票数順に自動ソート
+- **公開ロードマップ** — 計画済み・進行中・完了のKanban形式で外部公開
+- **ステータス管理** — Open → 検討中 → 計画済み → 進行中 → 完了
+- **管理ダッシュボード** — ステータス一括変更、フィルタリング、検索
+- **重複マージ** — 同内容リクエストをマージして投票数を統合
+- **コメントスレッド** — ユーザーと管理者の対話。管理者は青バッジで区別
+- **ボード無制限** — プロジェクトごとに複数ボードを作成可能
+- **Supabase RLS** — 全テーブルにRow Level Security適用
+
+## Quick Start
+
+### 1. Supabaseプロジェクトを作成
+
+[supabase.com](https://supabase.com) でプロジェクトを作成し、URLとAnon Keyを控える。
+
+### 2. データベースをセットアップ
+
+Supabase SQL Editorで `supabase/migrations/001_initial_schema.sql` を実行する。
+
+### 3. Vercelにデプロイ
+
+上の「Deploy with Vercel」ボタンをクリックし、環境変数を設定する。
+
+または手動でデプロイ:
 
 ```bash
+git clone https://github.com/postcabinets-jp/feedback-board
+cd feedback-board
+cp .env.example .env.local
+# .env.localにSupabase URLとキーを入力
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 環境変数
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Pages
 
-## Learn More
+| Path | Description | Auth Required |
+|------|-------------|---------------|
+| `/` | ランディングページ | No |
+| `/login` `/register` | 認証 | No |
+| `/dashboard` | ボード管理 | Yes |
+| `/dashboard/[boardId]` | 投稿管理・ステータス変更 | Yes |
+| `/b/[slug]` | 公開ボード（投票・投稿） | No (投票はログイン必要) |
+| `/b/[slug]/roadmap` | 公開ロードマップ | No |
 
-To learn more about Next.js, take a look at the following resources:
+## Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Next.js 16** (App Router, TypeScript strict)
+- **Supabase** (PostgreSQL + Auth + RLS)
+- **Tailwind CSS v4 + shadcn/ui** (base-ui)
+- **Vercel** deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Database Schema
 
-## Deploy on Vercel
+- `profiles` — ユーザープロファイル (auth.usersを拡張)
+- `boards` — フィードバックボード
+- `posts` — 機能リクエスト・バグ報告
+- `votes` — 投票 (post_id + user_id の一意制約)
+- `comments` — コメントスレッド
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+全テーブルにRLS適用済み。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+MIT
+
+---
+
+Built by [POST CABINETS](https://postcabinets.co.jp)
