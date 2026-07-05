@@ -3,6 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import {
+  createBoardSchema,
+  updateBoardSchema,
+  deleteBoardSchema,
+} from '@/lib/validations'
 
 function slugify(text: string): string {
   return text
@@ -13,14 +18,19 @@ function slugify(text: string): string {
 }
 
 export async function createBoard(formData: FormData) {
+  const parsed = createBoardSchema.safeParse({
+    name: formData.get('name'),
+    description: formData.get('description'),
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const name = formData.get('name') as string
-  const description = formData.get('description') as string
-
-  if (!name?.trim()) return { error: 'ボード名は必須です' }
+  const { name, description } = parsed.data
 
   let slug = slugify(name)
   if (!slug) slug = `board-${Date.now()}`
@@ -35,7 +45,7 @@ export async function createBoard(formData: FormData) {
 
   const { data, error } = await supabase
     .from('boards')
-    .insert([{ user_id: user.id, name: name.trim(), slug, description: description?.trim() || null }])
+    .insert([{ user_id: user.id, name, slug, description }])
     .select('id')
     .single()
 
@@ -48,21 +58,25 @@ export async function createBoard(formData: FormData) {
 }
 
 export async function updateBoard(boardId: string, formData: FormData) {
+  const parsed = updateBoardSchema.safeParse({
+    boardId,
+    name: formData.get('name'),
+    description: formData.get('description'),
+    categories: formData.get('categories'),
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const name = formData.get('name') as string
-  const description = formData.get('description') as string
-  const categoriesRaw = formData.get('categories') as string
-
-  const categories = categoriesRaw
-    ? categoriesRaw.split('\n').map((c) => c.trim()).filter(Boolean)
-    : undefined
+  const { name, description, categories } = parsed.data
 
   const updates: Record<string, unknown> = {
-    name: name?.trim(),
-    description: description?.trim() || null,
+    name,
+    description,
   }
   if (categories) updates.categories = categories
 
@@ -80,6 +94,11 @@ export async function updateBoard(boardId: string, formData: FormData) {
 }
 
 export async function deleteBoard(boardId: string) {
+  const parsed = deleteBoardSchema.safeParse({ boardId })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ログインが必要です' }

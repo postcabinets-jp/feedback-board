@@ -3,26 +3,40 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { PostStatus } from '@/lib/supabase/types'
+import {
+  createPostSchema,
+  updatePostStatusSchema,
+  mergePostSchema,
+  toggleVoteSchema,
+  addCommentSchema,
+} from '@/lib/validations'
 
 export async function createPost(boardId: string, boardSlug: string, formData: FormData) {
+  const parsed = createPostSchema.safeParse({
+    boardId,
+    boardSlug,
+    title: formData.get('title'),
+    description: formData.get('description'),
+    category: formData.get('category'),
+    author_name: formData.get('author_name'),
+    author_email: formData.get('author_email'),
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const title = (formData.get('title') as string)?.trim()
-  const description = (formData.get('description') as string)?.trim()
-  const category = (formData.get('category') as string)?.trim() || null
-  const authorName = (formData.get('author_name') as string)?.trim() || null
-  const authorEmail = (formData.get('author_email') as string)?.trim() || null
-
-  if (!title || !description) return { error: 'タイトルと詳細は必須です' }
+  const { title, description, category, author_name, author_email } = parsed.data
 
   const { data, error } = await supabase
     .from('posts')
     .insert([{
       board_id: boardId,
       author_id: user?.id ?? null,
-      author_email: user?.email ?? authorEmail,
-      author_name: authorName,
+      author_email: user?.email ?? author_email,
+      author_name,
       title,
       description,
       category,
@@ -40,6 +54,16 @@ export async function createPost(boardId: string, boardSlug: string, formData: F
 }
 
 export async function updatePostStatus(postId: string, boardId: string, boardSlug: string, status: PostStatus) {
+  const parsed = updatePostStatusSchema.safeParse({
+    postId,
+    boardId,
+    boardSlug,
+    status,
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ログインが必要です' }
@@ -55,7 +79,7 @@ export async function updatePostStatus(postId: string, boardId: string, boardSlu
 
   const { error } = await supabase
     .from('posts')
-    .update({ status })
+    .update({ status: parsed.data.status })
     .eq('id', postId)
     .eq('board_id', boardId)
 
@@ -68,6 +92,16 @@ export async function updatePostStatus(postId: string, boardId: string, boardSlu
 }
 
 export async function mergePost(fromPostId: string, intoPostId: string, boardId: string, boardSlug: string) {
+  const parsed = mergePostSchema.safeParse({
+    fromPostId,
+    intoPostId,
+    boardId,
+    boardSlug,
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ログインが必要です' }
@@ -94,6 +128,14 @@ export async function mergePost(fromPostId: string, intoPostId: string, boardId:
 }
 
 export async function toggleVote(postId: string, boardSlug: string) {
+  const parsed = toggleVoteSchema.safeParse({
+    postId,
+    boardSlug,
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ログインが必要です' }
@@ -119,12 +161,21 @@ export async function toggleVote(postId: string, boardSlug: string) {
 }
 
 export async function addComment(postId: string, boardSlug: string, boardId: string, formData: FormData) {
+  const parsed = addCommentSchema.safeParse({
+    postId,
+    boardSlug,
+    boardId,
+    content: formData.get('content'),
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const content = (formData.get('content') as string)?.trim()
-  if (!content) return { error: 'コメント内容は必須です' }
+  const { content } = parsed.data
 
   const { data: board } = await supabase
     .from('boards')
